@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import math
+import itertools
 
 
 class SearchTimeout(Exception):
@@ -120,15 +121,18 @@ def custom_score_3(game, player):
     
     own_moves = len(game.get_legal_moves(player))
     opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+
     return float(own_moves - opp_moves*2)
 
 
+
 class IsolationPlayer:
-    def __init__(self, search_depth=3, score_fn=custom_score, timeout=10.):
+    def __init__(self, search_depth=3, score_fn=custom_score, iterative=True, timeout=15.):
         self.search_depth = search_depth
         self.score = score_fn
         self.time_left = None
         self.TIMER_THRESHOLD = timeout
+        self.iterative = iterative
 
 # this passes tests
 
@@ -147,13 +151,11 @@ class MinimaxPlayer(IsolationPlayer):
         # in case the search fails due to timeout      
         legal_moves = game.get_legal_moves()
         
-        if not legal_moves:
-            return (-1, -1)
-        
         # always take center
         if game.move_count == 0:
             return (3, 3)
-        
+
+           
         best_move = (-1, -1)
 
         try:
@@ -209,10 +211,12 @@ class MinimaxPlayer(IsolationPlayer):
 
         best_score = float("-inf")
         best_move = (-1,-1)
+        #best_move = legal_moves[0]
+
         
         for move in legal_moves:
             this_score = self.min_value(game.forecast_move(move),depth-1)
-            if this_score > best_score:
+            if this_score >= best_score:
                 best_score = this_score
                 best_move = move
         
@@ -224,13 +228,13 @@ class MinimaxPlayer(IsolationPlayer):
             raise SearchTimeout()
             
         legal_moves = game.get_legal_moves()
-                   
-        if depth==0 or not legal_moves:
+         
+        if depth==0 or legal_moves == 0:
             return self.score(game,self)
-
+        
         
         best_score = float("-inf")
-        
+         
         for move in legal_moves:
             v = self.min_value(game.forecast_move(move), depth -1)
             if v >= best_score:
@@ -244,7 +248,7 @@ class MinimaxPlayer(IsolationPlayer):
             
         legal_moves = game.get_legal_moves()
         
-        if depth==0 or not legal_moves:
+        if depth==0 or legal_moves == 0:
             return self.score(game,self)
         
         best_score = float("inf")
@@ -296,27 +300,31 @@ class AlphaBetaPlayer(IsolationPlayer):
         
         legal_moves = game.get_legal_moves()
         
-        if not legal_moves:
-            return (-1, -1)
-        
         # always take center
         if game.move_count == 0:
             return (3, 3)
 
+        
+        if not legal_moves:
+            return (-1, -1)
+
         best_move = (-1, -1)
         best_score = float("-inf")
-
+        
         try:
             depth = 1
             while True:
-                best_move = self.alphabeta(game, depth)
+                v = self.alphabeta(game, depth)
+                if v == None:
+                    return best_move
+                best_move = v
                 depth += 1
                 
         except SearchTimeout:
-            return best_move
+            pass
             
         return best_move
-
+        
 
     
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
@@ -366,8 +374,9 @@ class AlphaBetaPlayer(IsolationPlayer):
         if not legal_moves:
             return (-1,-1)
         
-        best_move = (-1, -1)
+        best_move = None
         best_score = float("-Inf")
+        
         for move in legal_moves:
             this_score = self.ab_min_value(game.forecast_move(move), depth-1, alpha, beta)  
             if this_score >= best_score:
